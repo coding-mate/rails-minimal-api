@@ -1,0 +1,16 @@
+name: Build and cache
+on:
+  push: {}
+  workflow_dispatch:
+    branches: [ main ]
+jobs:
+  build_with_gpr:
+    runs-on: ubuntu-latest
+    env:
+      COMPOSE_DOCKER_CLI_BUILD: 1
+      DOCKER_BUILDKIT: 1
+    steps:
+      - uses: actions/checkout@v2
+      - run: echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u $GITHUB_ACTOR --password-stdin
+      - run: docker-compose build --progress plain --pull base build-env web
+      - run: docker-compose push base build-env web

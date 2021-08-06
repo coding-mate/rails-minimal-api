@@ -1,0 +1,36 @@
+version: "3.9"
+services:
+  base:
+    image: ghcr.io/duderamos/rails-minimal-api:base
+    build:
+      cache_from:
+        - ghcr.io/duderamos/rails-minimal-api:base
+      args:
+        BUILDKIT_INLINE_CACHE: 1
+      context: .
+      target: rails-app-base
+  build-env:
+    image: ghcr.io/duderamos/rails-minimal-api:build-env
+    build:
+      cache_from:
+        - ghcr.io/duderamos/rails-minimal-api:build-env
+      args:
+        BUILDKIT_INLINE_CACHE: 1
+      context: .
+      target: rails-app-build-env
+  dev:
+    image: rails-minimal-api:dev
+    build:
+      context: .
+      target: rails-app-dev
+    ports:
+      - "3000:3000"
+    volumes:
+      - ".:/app"
+  web:
+    image: ghcr.io/duderamos/rails-minimal-api:latest
+    build:
+      context: .
+      target: web
+    ports:
+      - "3000:3000"
