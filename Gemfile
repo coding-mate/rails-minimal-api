@@ -23,7 +23,7 @@ group :development, :test do
   gem "letter_opener"
   gem "rails_best_practices"
   gem "rspec-rails"
-  gem "standard"
+  gem "standardrb"
   gem "webmock"
 end
 

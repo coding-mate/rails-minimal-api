@@ -36,7 +36,7 @@ jobs:
         bundle check || bundle install --without development
 
     - name: Standardrb
-      run: bundle exec standard
+      run: bundle exec standardrb
 
   security:
     runs-on: ubuntu-latest
