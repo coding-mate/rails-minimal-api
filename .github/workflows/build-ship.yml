@@ -3,8 +3,114 @@ on:
   push: {}
   workflow_dispatch:
     branches: [ main ]
+
+env:
+  RUBY_VERSION: 3.0.1
+
 jobs:
-  build_with_gpr:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Set up Ruby
+      uses: ruby/setup-ruby@v1
+      with:
+        ruby-version: ${{ env.RUBY_VERSION }}
+
+    - name: Install bundler
+      run: gem install bundler
+
+    - name: Set up cache
+      uses: actions/cache@v2
+      with:
+        path: vendor/bundle
+        key: ${{ runner.os }}-gems-${{ hashFiles('**/Gemfile.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-gems-
+
+    - name: Install dependencies
+      run: |
+        bundle config path vendor/bundle
+        bundle check || bundle install --without development
+
+    - name: Standardrb
+      run: bundle exec standard
+
+  security:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Set up Ruby
+      uses: ruby/setup-ruby@v1
+      with:
+        ruby-version: ${{ env.RUBY_VERSION }}
+
+    - name: Install bundler
+      run: gem install bundler
+
+    - name: Set up cache
+      uses: actions/cache@v2
+      with:
+        path: vendor/bundle
+        key: ${{ runner.os }}-gems-${{ hashFiles('**/Gemfile.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-gems-
+
+    - name: Install dependencies
+      run: |
+        bundle config path vendor/bundle
+        bundle check || bundle install --without development
+
+    - name: Brakeman
+      run: bundle exec brakeman -6q --no-color
+
+    - name: Bundler audit
+      run: bundle exec bundler-audit check --update
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Set up Ruby
+      uses: ruby/setup-ruby@v1
+      with:
+        ruby-version: ${{ env.RUBY_VERSION }}
+
+    - name: Copy config
+      run: |
+        cp .env.example .env
+
+    - name: Install bundler
+      run: gem install bundler
+
+    - name: Set up cache
+      uses: actions/cache@v2
+      with:
+        path: vendor/bundle
+        key: ${{ runner.os }}-gems-${{ hashFiles('**/Gemfile.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-gems-
+
+    - name: Install dependencies
+      run: |
+        bundle config path vendor/bundle
+        bundle check || bundle install --without development
+
+    - name: Rspec
+      env:
+        RAILS_ENV: test
+      run: |
+        bundle exec rails db:setup db:migrate
+        bundle exec rspec --format progress
+
+  build_image:
+    needs: [test, security, lint]
     runs-on: ubuntu-latest
     env:
       COMPOSE_DOCKER_CLI_BUILD: 1
