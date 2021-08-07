@@ -73,6 +73,11 @@ jobs:
 
   test:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        ci_node_total: [2]
+        ci_node_index: [0, 1]
     steps:
     - name: Checkout code
       uses: actions/checkout@v2
@@ -105,9 +110,12 @@ jobs:
     - name: Rspec
       env:
         RAILS_ENV: test
+        CI_NODE_TOTAL: ${{ matrix.ci_node_total }}
+        CI_NODE_INDEX: ${{ matrix.ci_node_index }}
+      continue-on-error: true
       run: |
         bundle exec rails db:setup db:migrate
-        bundle exec rspec --format progress
+        bundle exec rspec --format progress $(bin/split-specs)
 
   build_image:
     needs: [test, security, lint]
