@@ -1,11 +1,42 @@
 #!/usr/bin/env ruby
 
-tests = Dir["spec/**/*_spec.rb"].
-  sort.
-  shuffle(random: Random.new(ENV['GITHUB_SHA'].to_i(16))).
-  select.
-  with_index do |el, i|
-    i % ENV["CI_NODE_TOTAL"].to_i == ENV["CI_NODE_INDEX"].to_i
+require "json"
+
+ci_node_total = ENV["CI_NODE_TOTAL"].to_i || 1
+ci_node_index = ENV["CI_NODE_INDEX"].to_i || 0
+rspec_json_file_path = ENV.fetch("RSPEC_RESULT_JSON_FILE", "./test_results/rspec.json")
+
+buckets = {}
+rspec_results = { examples: [] }
+min_bucket_index = 0
+
+# Allocate buckets
+(0..ci_node_total - 1).each do |bucket_index|
+  buckets[bucket_index] = { files: [], total_time: 0 }
+end
+
+# Assign running time to 0.1 as a minimum for all spec files
+spec_files = Dir["./spec/**/*_spec.rb"].each_with_object({}) do |filename, hash|
+  hash[filename] = 0.1
+end
+
+if File.exist?(rspec_json_file_path)
+  rspec_results = JSON.parse(File.read(rspec_json_file_path), symbolize_names: true)
+end
+
+# Aggregate spec file timings
+rspec_results[:examples].each do |example|
+  spec_files[example[:file_path]] = spec_files[example[:file_path]].to_f + example[:run_time]
+end
+
+# Distribute specs into multiple buckets by timing
+spec_files.each do |filename, running_time|
+  buckets.each do |k, v|
+    min_bucket_index = k if v[:total_time] < buckets[min_bucket_index][:total_time]
   end
 
-puts tests.join(" ")
+  buckets[min_bucket_index][:files] << filename
+  buckets[min_bucket_index][:total_time] += running_time
+end
+
+puts buckets[ci_node_index][:files].join(" ")
